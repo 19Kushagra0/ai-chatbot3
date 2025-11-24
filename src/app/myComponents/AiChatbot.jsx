@@ -1,26 +1,47 @@
 "use client";
-// import React, { useState } from "react";
+
 import React, { useState, useRef, useEffect } from "react";
 import "@/app/myComponents/AiChatbot.css";
+
 export default function AiChatbot() {
   const [userData, setUserData] = useState([]);
   const [aiData, setAiData] = useState([]);
-
   const [inputValue, setInputValue] = useState("");
 
   const inputHandler = (e) => {
     setInputValue(e.target.value);
   };
 
+  // ⭐ NEW: Load messages from database on page load
+  useEffect(() => {
+    const loadMessages = async () => {
+      const res = await fetch("/api/chat"); // GET request
+      const data = await res.json();
+
+      // separate user and ai messages
+      const users = data.messages
+        .filter((m) => m.role === "user")
+        .map((m) => m.text);
+
+      const ai = data.messages
+        .filter((m) => m.role === "ai")
+        .map((m) => m.text);
+
+      setUserData(users);
+      setAiData(ai);
+    };
+
+    loadMessages();
+  }, []); // runs only once
+
   const submitButton = async () => {
     console.log(inputValue);
 
-    // save user message
+    // save user message instantly in UI
     const copyUserData = [...userData];
     copyUserData.push(inputValue);
     setUserData(copyUserData);
 
-    // save input FIRST before clearing it
     const currentMsg = inputValue;
     setInputValue("");
 
@@ -37,11 +58,10 @@ export default function AiChatbot() {
       body: JSON.stringify({ message: currentMsg }),
     });
 
-    // read AI reply
     const data = await response.json();
     const aiReply = data.reply;
 
-    // save ai message
+    // show AI reply
     const copyAiData = [...aiData];
     copyAiData.push(aiReply);
     setAiData(copyAiData);
@@ -49,12 +69,10 @@ export default function AiChatbot() {
 
   const messagesEndRef = useRef(null);
 
-  // step 6(extra) part 2
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // step 6(extra) part 3
   useEffect(() => {
     scrollToBottom();
   }, [userData, aiData]);
@@ -67,28 +85,27 @@ export default function AiChatbot() {
           <span className="header-title">Chat bot</span>
         </div>
       </div>
-      {/* Messages Area */}
+
+      {/* Messages */}
       <div className="aiChatbot-messages">
-        {userData.map((el, index, arr) => {
+        {userData.map((el, index) => {
           return (
             <div key={index} className="aiChatbot-messages-box">
               <div className="message-row user-row">
                 <div className="message-bubble user-msg">{el}</div>
               </div>
               <div className="message-row ai-row">
-                {/* step 5 */}
                 <div className="message-bubble ai-msg">{aiData[index]}</div>
               </div>
             </div>
           );
         })}
 
-        {/* // step 6(extra) part 4 */}
-        <div ref={messagesEndRef} className=""></div>
+        <div ref={messagesEndRef}></div>
       </div>
-      {/* Input Area */}
+
+      {/* Input */}
       <div className="aiChatbot-input-area">
-        {/* Textarea instead of Input */}
         <textarea
           value={inputValue}
           onChange={inputHandler}
@@ -96,13 +113,11 @@ export default function AiChatbot() {
           className="chat-input"
           rows="1"
           onKeyDown={(e) => {
-            // step 8(extra)
             if (e.key === "Enter") {
               e.preventDefault();
               submitButton();
             }
           }}
-          // if enter key is pressed take input
         ></textarea>
         <button onClick={submitButton} className="send-btn">
           <svg
